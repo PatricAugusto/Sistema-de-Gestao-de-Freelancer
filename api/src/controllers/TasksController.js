@@ -39,16 +39,57 @@ module.exports = {
   },
 
   async index(request, response) {
-    const tasks = await connection('tasks')
-      .join('projects', 'projects.id', '=', 'tasks.project_id')
-      .select([
-        'tasks.*',
-        'projects.name as project_name'
-      ])
-      .orderBy('created_at', 'desc');
+  const { project_id } = request.query; // Pega o ID do projeto via URL: ?project_id=1
 
-    return response.json(tasks);
-  },
+  const query = connection('tasks')
+    .join('projects', 'projects.id', '=', 'tasks.project_id')
+    .select([
+      'tasks.*',
+      'projects.name as project_name'
+    ])
+    .orderBy('created_at', 'desc');
+
+  // Se o usuário passou um ID de projeto, filtramos a query
+  if (project_id) {
+    query.where('tasks.project_id', project_id);
+  }
+
+  const tasks = await query;
+  return response.json(tasks);
+},
+
+async report(request, response) {
+  const { month, year } = request.query; // ?month=03&year=2026
+
+  try {
+    const query = connection('tasks')
+      .sum('amount_earned as total_revenue')
+      .sum('duration_minutes as total_minutes')
+      .first();
+
+    // Filtro por data no SQLite usando strftime
+    if (month && year) {
+      // Formato esperado no banco: 'YYYY-MM-DD'
+      // O filtro abaixo busca registros onde o ano e mês coincidem
+      query.whereRaw("strftime('%m', created_at) = ?", [month])
+           .whereRaw("strftime('%Y', created_at) = ?", [year]);
+    }
+
+    const stats = await query;
+
+    const hours = Math.floor((stats.total_minutes || 0) / 60);
+    const minutes = (stats.total_minutes || 0) % 60;
+
+    return response.json({
+      total_revenue: stats.total_revenue || 0,
+      total_time: `${hours}h ${minutes}min`,
+      month_filtered: month || 'Todos',
+      year_filtered: year || 'Todos'
+    });
+  } catch (error) {
+    return response.status(500).json({ error: 'Erro ao gerar relatório filtrado.' });
+  }
+},
 
   async report(request, response) {
     try {
