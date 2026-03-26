@@ -116,3 +116,60 @@ export const Table = styled.table`
     box-shadow: 2px 2px 0px 0px #000;
   }
 `;
+
+export const TimerCard = styled.section`
+  background: #000;
+  color: #fff;
+  border: 4px solid black;
+  padding: 2rem;
+  box-shadow: 8px 8px 0px 0px #F4E04D;
+  margin-bottom: 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+
+  .display {
+    font-size: 4rem;
+    font-weight: 900;
+    font-family: 'Courier New', Courier, monospace;
+    background: #333;
+    padding: 0.5rem 2rem;
+    border: 2px inset #555;
+  }
+
+  .controls {
+    display: flex;
+    gap: 1rem;
+  }
+`;
+
+export const Button = styled.button`
+  background: ${props => props.bg || '#fff'};
+  color: #000;
+  border: 3px solid #000;
+  padding: 0.75rem 1.5rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 4px 4px 0px 0px #555;
+  
+  &:active {
+    box-shadow: 0px 0px 0px 0px #555;
+    transform: translate(4px, 4px);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+export const InputBrutal = styled.input`
+  border: 3px solid black;
+  padding: 0.5rem;
+  font-family: monospace;
+  font-weight: bold;
+  width: 100%;
+  margin-bottom: 1rem;
+`;
