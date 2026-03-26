@@ -1,14 +1,17 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { api } from '../service/api';
-import { Clock, DollarSign, Plus } from 'lucide-react';
+import { Clock, DollarSign, Plus, FileText } from 'lucide-react';
 import * as S from './styles.js'; 
 
 export default function Dashboard() {
   const [report, setReport] = useState({ total_revenue: 0, total_time: "0h 0min" });
+  const [tasks, setTasks] = useState([]);
 
   useEffect(() => {
     api.get('/reports/summary').then(res => setReport(res.data));
+
+    api.get('/tasks').then(res => setTasks(res.data));
   }, []);
 
   return (
@@ -34,6 +37,37 @@ export default function Dashboard() {
           <p className="value">{report.total_time}</p>
         </S.Card>
       </S.StatsGrid>
+
+      <S.TableContainer>
+        <h3>Logs de Atividade / Recentes</h3>
+        <S.Table>
+          <thead>
+            <tr>
+              <th>Projeto</th>
+              <th>Descrição</th>
+              <th>Duração</th>
+              <th>Valor (R$)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tasks.map(task => (
+              <tr key={task.id}>
+                <td>{task.project_name}</td>
+                <td>{task.description}</td>
+                <td>{task.duration_minutes} min</td>
+                <td>R$ {Number(task.amount_earned).toFixed(2)}</td>
+              </tr>
+            ))}
+            {tasks.length === 0 && (
+              <tr>
+                <td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}>
+                  Nenhuma tarefa registrada ainda...
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </S.Table>
+      </S.TableContainer>
     </S.Container>
   );
 }

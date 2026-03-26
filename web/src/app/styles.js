@@ -66,3 +66,53 @@ export const IconBox = styled.div`
   margin-right: 1rem;
   color: ${props => props.color || 'black'};
 `;
+
+export const TableContainer = styled.section`
+  background: white;
+  border: 4px solid black;
+  padding: 1.5rem;
+  box-shadow: 6px 6px 0px 0px rgba(0,0,0,1);
+  margin-top: 2rem;
+  overflow-x: auto;
+
+  h3 {
+    font-size: 1.5rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    text-decoration: underline;
+    text-decoration-color: #5E60CE;
+  }
+`;
+
+export const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  font-family: monospace;
+
+  th {
+    background: #000;
+    color: #fff;
+    text-align: left;
+    padding: 1rem;
+    text-transform: uppercase;
+  }
+
+  td {
+    padding: 1rem;
+    border-bottom: 2px solid black;
+    font-weight: bold;
+  }
+
+  tr:hover td {
+    background: #f9f9f9;
+  }
+
+  .status-badge {
+    background: #4ade80;
+    border: 2px solid black;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.8rem;
+    box-shadow: 2px 2px 0px 0px #000;
+  }
+`;
