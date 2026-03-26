@@ -173,3 +173,29 @@ export const InputBrutal = styled.input`
   width: 100%;
   margin-bottom: 1rem;
 `;
+
+export const SelectBrutal = styled.select`
+  width: 100%;
+  border: 4px solid black;
+  padding: 0.75rem;
+  font-family: monospace;
+  font-weight: 900;
+  background: white;
+  margin-bottom: 1.5rem;
+  box-shadow: 4px 4px 0px 0px #000;
+  cursor: pointer;
+  appearance: none; 
+
+  &:focus {
+    outline: none;
+    background: #F4E04D; 
+  }
+`;
+
+export const Label = styled.label`
+  display: block;
+  font-weight: 900;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+  font-size: 0.8rem;
+`;

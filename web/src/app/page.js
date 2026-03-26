@@ -10,7 +10,30 @@ export default function Dashboard() {
   const [seconds, setSeconds] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const [description, setDescription] = useState("");
-  const [projectId, setProjectId] = useState(1);
+  const [projects, setProjects] = useState([]);
+  const [projectId, setProjectId] = useState("");
+
+  useEffect(() => {
+    // Carregamento inicial de tudo
+    async function loadInitialData() {
+      const [resReport, resTasks, resProjects] = await Promise.all([
+        api.get('/reports/summary'),
+        api.get('/tasks'),
+        api.get('/projects')
+      ]);
+
+      setReport(resReport.data);
+      setTasks(resTasks.data);
+      setProjects(resProjects.data);
+      
+      // Seleciona o primeiro projeto automaticamente se houver
+      if (resProjects.data.length > 0) {
+        setProjectId(resProjects.data[0].id);
+      }
+    }
+
+    loadInitialData();
+  }, []);
 
   useEffect(() => {
     let interval = null;
@@ -73,9 +96,26 @@ export default function Dashboard() {
       </S.Header>
 
       <S.TimerCard>
-        <h2 style={{textTransform: 'uppercase'}}>Tracker de Atividade_</h2>
+        <h2 style={{textTransform: 'uppercase', marginBottom: '1rem'}}>Painel de Controle_</h2>
+
+        <div style={{ width: '100%' }}>
+          <S.Label>Selecione o Projeto Ativo:</S.Label>
+          <S.SelectBrutal 
+            value={projectId} 
+            onChange={(e) => setProjectId(e.target.value)}
+          >
+            {projects.map(project => (
+              <option key={project.id} value={project.id}>
+                {project.name} (R$ {project.hourly_rate}/h)
+              </option>
+            ))}
+            {projects.length === 0 && <option>Nenhum projeto encontrado</option>}
+          </S.SelectBrutal>
+        </div>
+
+        <S.Label>O que você está fazendo?</S.Label>
         <S.InputBrutal 
-          placeholder="O QUE VOCÊ ESTÁ FAZENDO AGORA?" 
+          placeholder="Ex: Refatorando a API de Clientes" 
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
