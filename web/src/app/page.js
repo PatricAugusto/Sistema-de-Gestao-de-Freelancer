@@ -1,40 +1,67 @@
 "use client";
+
 import { useState, useEffect } from 'react';
 import { api } from '../service/api';
-import { Clock, DollarSign, Play, Square, Save } from 'lucide-react';
-import * as S from './styles.js'; 
+import { Clock, DollarSign, Plus, Play, Square, Save, Filter } from 'lucide-react';
+import * as S from './styles.js';
 
 export default function Dashboard() {
+  // --- ESTADOS DE DADOS ---
   const [report, setReport] = useState({ total_revenue: 0, total_time: "0h 0min" });
   const [tasks, setTasks] = useState([]);
+  const [projects, setProjects] = useState([]);
+
+  // --- ESTADOS DO CRONÔMETRO ---
   const [seconds, setSeconds] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const [description, setDescription] = useState("");
-  const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState("");
 
-  useEffect(() => {
-    // Carregamento inicial de tudo
-    async function loadInitialData() {
-      const [resReport, resTasks, resProjects] = await Promise.all([
-        api.get('/reports/summary'),
-        api.get('/tasks'),
-        api.get('/projects')
+  // --- ESTADOS DOS FILTROS ---
+  const [filterProject, setFilterProject] = useState("");
+  const [filterMonth, setFilterMonth] = useState("");
+  const [filterYear, setFilterYear] = useState(new Date().getFullYear().toString());
+
+  // --- LÓGICA DE CARREGAMENTO E FILTROS ---
+  async function loadData(projId = "", month = "", year = "2026") {
+    try {
+      // Endpoint de Relatório com Query Params
+      let reportUrl = `/reports/summary?year=${year}`;
+      if (month) reportUrl += `&month=${month}`;
+
+      // Endpoint de Tarefas com Query Params
+      let tasksUrl = `/tasks`;
+      if (projId) tasksUrl += `?project_id=${projId}`;
+
+      const [resReport, resTasks] = await Promise.all([
+        api.get(reportUrl),
+        api.get(tasksUrl)
       ]);
 
       setReport(resReport.data);
       setTasks(resTasks.data);
+    } catch (error) {
+      console.error("Erro ao carregar dados da API:", error);
+    }
+  }
+
+  // Carregamento Inicial
+  useEffect(() => {
+    async function initialSetup() {
+      const resProjects = await api.get('/projects');
       setProjects(resProjects.data);
       
-      // Seleciona o primeiro projeto automaticamente se houver
       if (resProjects.data.length > 0) {
         setProjectId(resProjects.data[0].id);
       }
+      
+      // Carrega dados iniciais sem filtros específicos
+      loadData("", "", filterYear);
     }
-
-    loadInitialData();
+    initialSetup();
   }, []);
 
+  // --- CICLO DE VIDA DO CRONÔMETRO ---
   useEffect(() => {
     let interval = null;
     if (isActive) {
@@ -54,6 +81,7 @@ export default function Dashboard() {
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // --- AÇÕES ---
   const handleSaveTask = async () => {
     const duration_minutes = Math.max(1, Math.round(seconds / 60));
     
@@ -64,30 +92,18 @@ export default function Dashboard() {
         duration_minutes
       });
 
-      // Resetar e atualizar dados
+      // Resetar cronômetro
       setSeconds(0);
       setIsActive(false);
       setDescription("");
       
-      // Refresh nos dados do dashboard
-      const [resReport, resTasks] = await Promise.all([
-        api.get('/reports/summary'),
-        api.get('/tasks')
-      ]);
-      setReport(resReport.data);
-      setTasks(resTasks.data);
-      
+      // Atualizar Dashboard
+      loadData(filterProject, filterMonth, filterYear);
       alert("Tarefa salva com sucesso!");
     } catch (error) {
-      alert("Erro ao salvar tarefa.");
+      alert("Erro ao salvar tarefa. Verifique a conexão com o back-end.");
     }
   };
-
-  useEffect(() => {
-    api.get('/reports/summary').then(res => setReport(res.data));
-
-    api.get('/tasks').then(res => setTasks(res.data));
-  }, []);
 
   return (
     <S.Container>
@@ -95,50 +111,51 @@ export default function Dashboard() {
         <h1>Freelance / OS _</h1>
       </S.Header>
 
+      {/* PAINEL DE CONTROLE / CRONÔMETRO */}
       <S.TimerCard>
         <h2 style={{textTransform: 'uppercase', marginBottom: '1rem'}}>Painel de Controle_</h2>
-
+        
         <div style={{ width: '100%' }}>
-          <S.Label>Selecione o Projeto Ativo:</S.Label>
+          <S.Label>Projeto Ativo:</S.Label>
           <S.SelectBrutal 
             value={projectId} 
             onChange={(e) => setProjectId(e.target.value)}
           >
-            {projects.map(project => (
-              <option key={project.id} value={project.id}>
-                {project.name} (R$ {project.hourly_rate}/h)
-              </option>
+            {projects.map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
             ))}
-            {projects.length === 0 && <option>Nenhum projeto encontrado</option>}
           </S.SelectBrutal>
         </div>
 
-        <S.Label>O que você está fazendo?</S.Label>
-        <S.InputBrutal 
-          placeholder="Ex: Refatorando a API de Clientes" 
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
+        <div style={{ width: '100%' }}>
+          <S.Label>O que está desenvolvendo?</S.Label>
+          <S.InputBrutal 
+            placeholder="Ex: Refatoração de componentes" 
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
         
         <div className="display">{formatTime(seconds)}</div>
         
         <div className="controls">
           {!isActive ? (
             <S.Button bg="#4ade80" onClick={() => setIsActive(true)}>
-              <Play size={20} inline /> START
+              <Play size={20} style={{marginRight: '8px', verticalAlign: 'middle'}} /> START
             </S.Button>
           ) : (
             <S.Button bg="#f87171" onClick={() => setIsActive(false)}>
-              <Square size={20} inline /> STOP
+              <Square size={20} style={{marginRight: '8px', verticalAlign: 'middle'}} /> STOP
             </S.Button>
           )}
           
           <S.Button bg="#F4E04D" onClick={handleSaveTask} disabled={seconds < 10}>
-            <Save size={20} inline /> SALVAR
+            <Save size={20} style={{marginRight: '8px', verticalAlign: 'middle'}} /> SALVAR
           </S.Button>
         </div>
       </S.TimerCard>
 
+      {/* CARDS DE ESTATÍSTICAS */}
       <S.StatsGrid>
         <S.Card>
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
@@ -157,8 +174,45 @@ export default function Dashboard() {
         </S.Card>
       </S.StatsGrid>
 
+      {/* FILTROS E TABELA */}
       <S.TableContainer>
-        <h3>Logs de Atividade / Recentes</h3>
+        <h3>Logs de Atividade / Filtros</h3>
+        
+        <S.FilterBar>
+          <div>
+            <S.Label>Filtrar por Projeto:</S.Label>
+            <S.SelectBrutal 
+              value={filterProject} 
+              onChange={(e) => setFilterProject(e.target.value)}
+              style={{ marginBottom: 0 }}
+            >
+              <option value="">Todos os Projetos</option>
+              {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </S.SelectBrutal>
+          </div>
+
+          <div>
+            <S.Label>Mês:</S.Label>
+            <S.SelectBrutal 
+              value={filterMonth} 
+              onChange={(e) => setFilterMonth(e.target.value)}
+              style={{ marginBottom: 0 }}
+            >
+              <option value="">O Ano Todo</option>
+              <option value="01">Janeiro</option>
+              <option value="02">Fevereiro</option>
+              <option value="03">Março</option>
+              <option value="04">Abril</option>
+              <option value="05">Maio</option>
+              <option value="06">Junho</option>
+            </S.SelectBrutal>
+          </div>
+
+          <S.FilterButton onClick={() => loadData(filterProject, filterMonth, filterYear)}>
+            <Filter size={18} style={{marginRight: '8px', verticalAlign: 'middle'}} /> APLICAR
+          </S.FilterButton>
+        </S.FilterBar>
+
         <S.Table>
           <thead>
             <tr>
@@ -180,7 +234,7 @@ export default function Dashboard() {
             {tasks.length === 0 && (
               <tr>
                 <td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}>
-                  Nenhuma tarefa registrada ainda...
+                  Nenhum registro encontrado para este filtro.
                 </td>
               </tr>
             )}

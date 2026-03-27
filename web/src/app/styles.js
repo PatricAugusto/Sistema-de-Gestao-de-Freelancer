@@ -199,3 +199,33 @@ export const Label = styled.label`
   margin-bottom: 0.5rem;
   font-size: 0.8rem;
 `;
+
+export const FilterBar = styled.div`
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+
+  div {
+    flex: 1;
+    min-width: 200px;
+  }
+`;
+
+export const FilterButton = styled.button`
+  background: #000;
+  color: #fff;
+  border: 4px solid black;
+  padding: 0.75rem 1.5rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 4px 4px 0px 0px #5E60CE;
+  height: fit-content;
+
+  &:hover {
+    background: #5E60CE;
+    box-shadow: 2px 2px 0px 0px #000;
+  }
+`;
