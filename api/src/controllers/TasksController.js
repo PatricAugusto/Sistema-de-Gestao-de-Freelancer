@@ -130,11 +130,11 @@ async report(request, response) {
           description,
           duration_minutes,
           project_id,
-          updated_at: knex.fn.now()
         });
 
       return response.json({ message: 'Tarefa atualizada com sucesso!' });
     } catch (error) {
+      console.error(error);
       return response.status(500).json({ error: 'Erro ao atualizar tarefa.' });
     }
   },
