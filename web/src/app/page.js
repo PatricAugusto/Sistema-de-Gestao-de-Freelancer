@@ -22,7 +22,7 @@ export default function Dashboard() {
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
 
-  // --- ESTADOS DO CRONÔMETRO ---
+  // --- ESTADOS DO CRONÔMETRO (NOVA TAREFA) ---
   const [seconds, setSeconds] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const [description, setDescription] = useState("");
@@ -33,12 +33,18 @@ export default function Dashboard() {
   const [filterMonth, setFilterMonth] = useState("");
   const [filterYear, setFilterYear] = useState(new Date().getFullYear().toString());
 
-  // --- ESTADOS DE MODAIS (UX) ---
+  // --- ESTADOS DE UX / MODAIS ---
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectRate, setNewProjectRate] = useState("");
 
-  // --- LÓGICA DE CARREGAMENTO ---
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState(null);
+  const [editDescription, setEditDescription] = useState("");
+  const [editDuration, setEditDuration] = useState(0);
+  const [editProjectId, setEditProjectId] = useState("");
+
+  // --- LÓGICA DE CARREGAMENTO CENTRALIZADA ---
   async function loadData(projId = "", month = "", year = "2026") {
     try {
       let reportUrl = `/reports/summary?year=${year}`;
@@ -55,7 +61,7 @@ export default function Dashboard() {
       setReport(resReport.data);
       setTasks(resTasks.data);
     } catch (error) {
-      console.error("Erro na API:", error);
+      console.error("Erro na comunicação com a API:", error);
     }
   }
 
@@ -69,7 +75,7 @@ export default function Dashboard() {
     initialSetup();
   }, []);
 
-  // --- CONTROLE DO TIMER ---
+  // --- CICLO DE VIDA DO TIMER ---
   useEffect(() => {
     let interval = null;
     if (isActive) {
@@ -87,7 +93,7 @@ export default function Dashboard() {
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // --- AÇÕES DE TAREFAS ---
+  // --- AÇÕES DE TAREFAS (CRUD) ---
   const handleSaveTask = async () => {
     const duration_minutes = Math.max(1, Math.round(seconds / 60));
     try {
@@ -105,19 +111,42 @@ export default function Dashboard() {
     }
   };
 
+  const openEditModal = (task) => {
+    setEditingTaskId(task.id);
+    setEditDescription(task.description);
+    setEditDuration(task.duration_minutes);
+    setEditProjectId(task.project_id);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateTask = async () => {
+    try {
+      await api.put(`/tasks/${editingTaskId}`, {
+        description: editDescription,
+        duration_minutes: Number(editDuration),
+        project_id: editProjectId
+      });
+      setIsEditModalOpen(false);
+      loadData(filterProject, filterMonth, filterYear);
+      alert("Registro atualizado!");
+    } catch (error) {
+      alert("Erro ao atualizar tarefa.");
+    }
+  };
+
   const handleDeleteTask = async (id) => {
-    if (!confirm("Deseja deletar este registro de tempo?")) return;
+    if (!confirm("Deseja deletar este registro de tempo permanentemente?")) return;
     try {
       await api.delete(`/tasks/${id}`);
       loadData(filterProject, filterMonth, filterYear);
     } catch (error) {
-      alert("Erro ao excluir.");
+      alert("Erro ao excluir registro.");
     }
   };
 
   // --- AÇÕES DE PROJETOS ---
   const handleCreateProject = async () => {
-    if (!newProjectName || !newProjectRate) return alert("Preencha tudo!");
+    if (!newProjectName || !newProjectRate) return alert("Preencha todos os campos!");
     try {
       await api.post('/projects', {
         name: newProjectName,
@@ -140,27 +169,27 @@ export default function Dashboard() {
         <h1>Freelance / OS _</h1>
       </S.Header>
 
-      <div style={{ marginBottom: '2rem', display: 'flex', gap: '1rem' }}>
+      <div style={{ marginBottom: '2rem' }}>
         <S.Button bg="#5E60CE" style={{ color: 'white' }} onClick={() => setIsProjectModalOpen(true)}>
           <Plus size={20} style={{ marginRight: '8px' }} /> NOVO PROJETO
         </S.Button>
       </div>
 
-      {/* PAINEL DO CRONÔMETRO */}
+      {/* TRACKER SECTION */}
       <S.TimerCard>
-        <h2 style={{ textTransform: 'uppercase', fontSize: '0.9rem', opacity: 0.8 }}>Tracker de Atividade_</h2>
+        <h2 style={{ textTransform: 'uppercase', fontSize: '0.9rem', opacity: 0.8 }}>Novo Registro de Tempo_</h2>
         
         <div style={{ width: '100%' }}>
-          <S.Label>Projeto Ativo:</S.Label>
+          <S.Label>Projeto:</S.Label>
           <S.SelectBrutal value={projectId} onChange={(e) => setProjectId(e.target.value)}>
             {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </S.SelectBrutal>
         </div>
 
         <div style={{ width: '100%' }}>
-          <S.Label>O que você está fazendo?</S.Label>
+          <S.Label>Descrição da Atividade:</S.Label>
           <S.InputBrutal 
-            placeholder="Ex: Coding backend routes" 
+            placeholder="No que você está trabalhando?" 
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
@@ -185,7 +214,7 @@ export default function Dashboard() {
         </div>
       </S.TimerCard>
 
-      {/* CARDS FINANCEIROS */}
+      {/* FINANCE CARDS */}
       <S.StatsGrid>
         <S.Card>
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
@@ -204,28 +233,30 @@ export default function Dashboard() {
         </S.Card>
       </S.StatsGrid>
 
-      {/* TABELA E FILTROS */}
+      {/* HISTORIC & FILTERS */}
       <S.TableContainer>
-        <h3 style={{ marginBottom: '1.5rem' }}>Histórico & Filtros</h3>
+        <h3 style={{ marginBottom: '1.5rem' }}>Logs e Filtros_</h3>
         
         <S.FilterBar>
           <div>
             <S.Label>Projeto:</S.Label>
             <S.SelectBrutal value={filterProject} onChange={(e) => setFilterProject(e.target.value)} style={{ marginBottom: 0 }}>
-              <option value="">Todos</option>
+              <option value="">Todos os Projetos</option>
               {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </S.SelectBrutal>
           </div>
           <div>
             <S.Label>Mês:</S.Label>
             <S.SelectBrutal value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} style={{ marginBottom: 0 }}>
-              <option value="">Ano Todo</option>
+              <option value="">O Ano Todo</option>
+              <option value="01">Janeiro</option>
+              <option value="02">Fevereiro</option>
               <option value="03">Março</option>
               <option value="04">Abril</option>
             </S.SelectBrutal>
           </div>
           <S.FilterButton onClick={() => loadData(filterProject, filterMonth, filterYear)}>
-            <Filter size={18} style={{ marginRight: '8px' }} /> FILTRAR
+            <Filter size={18} style={{ marginRight: '8px' }} /> APLICAR
           </S.FilterButton>
         </S.FilterBar>
 
@@ -234,7 +265,7 @@ export default function Dashboard() {
             <tr>
               <th>Projeto</th>
               <th>Descrição</th>
-              <th>Duração</th>
+              <th>Tempo</th>
               <th>Ganho</th>
               <th>Ações</th>
             </tr>
@@ -247,7 +278,7 @@ export default function Dashboard() {
                 <td>{task.duration_minutes}m</td>
                 <td>R$ {Number(task.amount_earned).toFixed(2)}</td>
                 <td>
-                  <S.ActionButton bg="#fbbf24" onClick={() => alert("Função Editar em breve!")}>
+                  <S.ActionButton bg="#fbbf24" onClick={() => openEditModal(task)}>
                     <Edit3 size={14} />
                   </S.ActionButton>
                   <S.ActionButton bg="#f87171" onClick={() => handleDeleteTask(task.id)}>
@@ -260,7 +291,7 @@ export default function Dashboard() {
         </S.Table>
       </S.TableContainer>
 
-      {/* MODAL DE PROJETO */}
+      {/* MODAL: NOVO PROJETO */}
       {isProjectModalOpen && (
         <S.Overlay>
           <S.Modal>
@@ -268,16 +299,37 @@ export default function Dashboard() {
               <h2>Novo Projeto_</h2>
               <X style={{ cursor: 'pointer' }} onClick={() => setIsProjectModalOpen(false)} />
             </div>
-            
-            <S.Label>Nome:</S.Label>
-            <S.InputBrutal placeholder="Ex: E-commerce" value={newProjectName} onChange={e => setNewProjectName(e.target.value)} />
-            
-            <S.Label>Valor Hora (R$):</S.Label>
-            <S.InputBrutal type="number" placeholder="80" value={newProjectRate} onChange={e => setNewProjectRate(e.target.value)} />
-
+            <S.Label>Nome do Cliente/Projeto:</S.Label>
+            <S.InputBrutal value={newProjectName} onChange={e => setNewProjectName(e.target.value)} />
+            <S.Label>Valor por Hora (R$):</S.Label>
+            <S.InputBrutal type="number" value={newProjectRate} onChange={e => setNewProjectRate(e.target.value)} />
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-              <S.Button bg="#4ade80" onClick={handleCreateProject}>SALVAR</S.Button>
-              <S.Button bg="#eee" onClick={() => setIsProjectModalOpen(false)}>FECHAR</S.Button>
+              <S.Button bg="#4ade80" onClick={handleCreateProject}>CRIAR</S.Button>
+              <S.Button bg="#eee" onClick={() => setIsProjectModalOpen(false)}>CANCELAR</S.Button>
+            </div>
+          </S.Modal>
+        </S.Overlay>
+      )}
+
+      {/* MODAL: EDITAR TAREFA */}
+      {isEditModalOpen && (
+        <S.Overlay>
+          <S.Modal>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2>Ajustar Registro_</h2>
+              <X style={{ cursor: 'pointer' }} onClick={() => setIsEditModalOpen(false)} />
+            </div>
+            <S.Label>Projeto:</S.Label>
+            <S.SelectBrutal value={editProjectId} onChange={e => setEditProjectId(e.target.value)}>
+              {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </S.SelectBrutal>
+            <S.Label>Descrição:</S.Label>
+            <S.InputBrutal value={editDescription} onChange={e => setEditDescription(e.target.value)} />
+            <S.Label>Tempo (Minutos):</S.Label>
+            <S.InputBrutal type="number" value={editDuration} onChange={e => setEditDuration(e.target.value)} />
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+              <S.Button bg="#4ade80" onClick={handleUpdateTask}>SALVAR</S.Button>
+              <S.Button bg="#eee" onClick={() => setIsEditModalOpen(false)}>CANCELAR</S.Button>
             </div>
           </S.Modal>
         </S.Overlay>
