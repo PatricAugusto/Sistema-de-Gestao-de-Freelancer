@@ -1,13 +1,39 @@
-const connection = require('../database/connection');
 const knex = require('../database/connection');
 
 module.exports = {
+  // 1. LISTAGEM DE TAREFAS (Com cálculo dinâmico para garantir precisão)
+  async index(request, response) {
+    const { project_id } = request.query;
+
+    try {
+      let query = knex('tasks')
+        .join('projects', 'projects.id', '=', 'tasks.project_id')
+        .select(
+          'tasks.*',
+          'projects.name as project_name',
+          // Cálculo dinâmico para evitar erros se o valor/hora do projeto mudar
+          knex.raw('((projects.hourly_rate / 60.0) * tasks.duration_minutes) as amount_earned')
+        )
+        .orderBy('tasks.created_at', 'desc');
+
+      if (project_id) {
+        query = query.where('tasks.project_id', project_id);
+      }
+
+      const tasks = await query;
+      return response.json(tasks);
+    } catch (error) {
+      console.error("Erro na listagem:", error);
+      return response.status(500).json({ error: 'Erro ao listar tarefas.' });
+    }
+  },
+
+  // 2. CRIAÇÃO DE TAREFA
   async create(request, response) {
     const { project_id, description, duration_minutes } = request.body;
 
     try {
-      // 1. Buscar o valor da hora (hourly_rate) do projeto vinculado
-      const project = await connection('projects')
+      const project = await knex('projects')
         .where('id', project_id)
         .select('hourly_rate')
         .first();
@@ -16,103 +42,24 @@ module.exports = {
         return response.status(404).json({ error: 'Projeto não encontrado.' });
       }
 
-      // 2. Calcular o valor ganho: (minutos / 60) * valor_hora
-      const amount_earned = (duration_minutes / 60) * project.hourly_rate;
+      // Cálculo preventivo para armazenamento (opcional, já que o index calcula dinamicamente)
+      const amount_earned = (duration_minutes / 60.0) * project.hourly_rate;
 
-      // 3. Inserir a tarefa com o valor já calculado
-      const [id] = await connection('tasks').insert({
+      const [id] = await knex('tasks').insert({
         project_id,
         description,
         duration_minutes,
-        amount_earned: amount_earned.toFixed(2), // Garante 2 casas decimais
+        amount_earned: amount_earned.toFixed(2),
       });
 
-      return response.status(201).json({ 
-        id, 
-        description, 
-        duration_minutes, 
-        amount_earned 
-      });
-
+      return response.status(201).json({ id, description, amount_earned });
     } catch (error) {
+      console.error("Erro ao criar:", error);
       return response.status(500).json({ error: 'Erro ao registrar tarefa.' });
     }
   },
 
-  async index(request, response) {
-  const { project_id } = request.query; // Pega o ID do projeto via URL: ?project_id=1
-
-  const query = connection('tasks')
-    .join('projects', 'projects.id', '=', 'tasks.project_id')
-    .select([
-      'tasks.*',
-      'projects.name as project_name'
-    ])
-    .orderBy('created_at', 'desc');
-
-  // Se o usuário passou um ID de projeto, filtramos a query
-  if (project_id) {
-    query.where('tasks.project_id', project_id);
-  }
-
-  const tasks = await query;
-  return response.json(tasks);
-},
-
-async report(request, response) {
-  const { month, year } = request.query; // ?month=03&year=2026
-
-  try {
-    const query = connection('tasks')
-      .sum('amount_earned as total_revenue')
-      .sum('duration_minutes as total_minutes')
-      .first();
-
-    // Filtro por data no SQLite usando strftime
-    if (month && year) {
-      // Formato esperado no banco: 'YYYY-MM-DD'
-      // O filtro abaixo busca registros onde o ano e mês coincidem
-      query.whereRaw("strftime('%m', created_at) = ?", [month])
-           .whereRaw("strftime('%Y', created_at) = ?", [year]);
-    }
-
-    const stats = await query;
-
-    const hours = Math.floor((stats.total_minutes || 0) / 60);
-    const minutes = (stats.total_minutes || 0) % 60;
-
-    return response.json({
-      total_revenue: stats.total_revenue || 0,
-      total_time: `${hours}h ${minutes}min`,
-      month_filtered: month || 'Todos',
-      year_filtered: year || 'Todos'
-    });
-  } catch (error) {
-    return response.status(500).json({ error: 'Erro ao gerar relatório filtrado.' });
-  }
-},
-
-  async report(request, response) {
-    try {
-      const stats = await connection('tasks')
-        .sum('amount_earned as total_revenue')
-        .sum('duration_minutes as total_minutes')
-        .first();
-
-      // Convertendo minutos totais para um formato legível (ex: 2h 30min)
-      const hours = Math.floor(stats.total_minutes / 60);
-      const minutes = stats.total_minutes % 60;
-
-      return response.json({
-        total_revenue: stats.total_revenue || 0,
-        total_time: `${hours}h ${minutes}min`,
-        raw_minutes: stats.total_minutes || 0
-      });
-    } catch (error) {
-      return response.status(500).json({ error: 'Erro ao gerar relatório.' });
-    }
-  },
-
+  // 3. ATUALIZAÇÃO (UPDATE)
   async update(request, response) {
     const { id } = request.params;
     const { description, duration_minutes, project_id } = request.body;
@@ -134,11 +81,12 @@ async report(request, response) {
 
       return response.json({ message: 'Tarefa atualizada com sucesso!' });
     } catch (error) {
-      console.error(error);
+      console.error("Erro no update:", error);
       return response.status(500).json({ error: 'Erro ao atualizar tarefa.' });
     }
   },
 
+  // 4. EXCLUSÃO (DELETE)
   async delete(request, response) {
     const { id } = request.params;
 
@@ -151,9 +99,40 @@ async report(request, response) {
 
       await knex('tasks').where({ id }).del();
 
-      return response.status(204).send(); // 204 No Content (sucesso sem corpo de resposta)
+      return response.status(204).send();
     } catch (error) {
       return response.status(500).json({ error: 'Erro ao deletar tarefa.' });
+    }
+  },
+
+  // 5. SUMÁRIO / RELATÓRIO (O que alimenta os cards do dashboard)
+  async summary(request, response) {
+    const { month, year } = request.query;
+
+    try {
+      let query = knex('tasks')
+        .join('projects', 'projects.id', '=', 'tasks.project_id')
+        .select(
+          knex.raw('SUM((projects.hourly_rate / 60.0) * tasks.duration_minutes) as total_revenue'),
+          knex.raw('SUM(tasks.duration_minutes) as total_minutes_raw')
+        );
+
+      if (month) query = query.whereRaw("strftime('%m', tasks.created_at) = ?", [month]);
+      if (year) query = query.whereRaw("strftime('%Y', tasks.created_at) = ?", [year]);
+
+      const result = await query.first();
+
+      const totalMinutes = result.total_minutes_raw || 0;
+      const hrs = Math.floor(totalMinutes / 60);
+      const mins = totalMinutes % 60;
+
+      return response.json({
+        total_revenue: result.total_revenue || 0,
+        total_time: `${hrs}h ${mins}min`
+      });
+    } catch (error) {
+      console.error("Erro no sumário:", error);
+      return response.status(500).json({ error: 'Erro ao gerar sumário.' });
     }
   }
 };

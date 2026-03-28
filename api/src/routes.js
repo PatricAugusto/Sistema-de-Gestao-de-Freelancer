@@ -15,7 +15,7 @@ routes.patch('/projects/:id/status', ProjectsController.updateStatus);
 routes.post('/tasks', TasksController.create);
 routes.get('/tasks', TasksController.index);
 
-routes.get('/reports/summary', TasksController.report);
+routes.get('/reports/summary', TasksController.summary);
 
 routes.put('/tasks/:id', TasksController.update);    
 routes.delete('/tasks/:id', TasksController.delete);
