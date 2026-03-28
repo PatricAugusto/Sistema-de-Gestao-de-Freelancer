@@ -229,3 +229,34 @@ export const FilterButton = styled.button`
     box-shadow: 2px 2px 0px 0px #000;
   }
 `;
+
+export const Overlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+`;
+
+export const Modal = styled.div`
+  background: white;
+  border: 4px solid black;
+  padding: 2rem;
+  box-shadow: 10px 10px 0px 0px #F4E04D;
+  width: 90%;
+  max-width: 500px;
+  position: relative;
+
+  h2 {
+    text-transform: uppercase;
+    font-weight: 900;
+    margin-bottom: 1.5rem;
+    border-bottom: 4px solid black;
+    display: inline-block;
+  }
+`;
