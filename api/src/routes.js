@@ -17,4 +17,7 @@ routes.get('/tasks', TasksController.index);
 
 routes.get('/reports/summary', TasksController.report);
 
+routes.put('/tasks/:id', TasksController.update);    
+routes.delete('/tasks/:id', TasksController.delete);
+
 module.exports = routes;

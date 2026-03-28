@@ -260,3 +260,25 @@ export const Modal = styled.div`
     display: inline-block;
   }
 `;
+
+export const ActionButton = styled.button`
+  background: ${props => props.bg || '#fff'};
+  border: 2px solid black;
+  padding: 0.4rem;
+  cursor: pointer;
+  margin-right: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s;
+
+  &:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 2px 2px 0px 0px black;
+  }
+
+  &:active {
+    transform: translate(0, 0);
+    box-shadow: 0px 0px 0px 0px black;
+  }
+`;

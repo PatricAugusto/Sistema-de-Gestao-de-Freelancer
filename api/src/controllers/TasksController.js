@@ -1,4 +1,5 @@
 const connection = require('../database/connection');
+const knex = require('../database/connection');
 
 module.exports = {
   async create(request, response) {
@@ -109,6 +110,50 @@ async report(request, response) {
       });
     } catch (error) {
       return response.status(500).json({ error: 'Erro ao gerar relatório.' });
+    }
+  },
+
+  async update(request, response) {
+    const { id } = request.params;
+    const { description, duration_minutes, project_id } = request.body;
+
+    try {
+      const task = await knex('tasks').where({ id }).first();
+
+      if (!task) {
+        return response.status(404).json({ error: 'Tarefa não encontrada.' });
+      }
+
+      await knex('tasks')
+        .where({ id })
+        .update({
+          description,
+          duration_minutes,
+          project_id,
+          updated_at: knex.fn.now()
+        });
+
+      return response.json({ message: 'Tarefa atualizada com sucesso!' });
+    } catch (error) {
+      return response.status(500).json({ error: 'Erro ao atualizar tarefa.' });
+    }
+  },
+
+  async delete(request, response) {
+    const { id } = request.params;
+
+    try {
+      const task = await knex('tasks').where({ id }).first();
+
+      if (!task) {
+        return response.status(404).json({ error: 'Tarefa não encontrada.' });
+      }
+
+      await knex('tasks').where({ id }).del();
+
+      return response.status(204).send(); // 204 No Content (sucesso sem corpo de resposta)
+    } catch (error) {
+      return response.status(500).json({ error: 'Erro ao deletar tarefa.' });
     }
   }
 };
